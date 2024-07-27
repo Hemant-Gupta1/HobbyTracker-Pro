@@ -1,4 +1,4 @@
-# HobbyTracker-Pro
+# HobbyTracker Pro
 
 ## GitHub Link
 https://github.com/Hemant-Gupta1/HobbyTracker-Pro/tree/main
