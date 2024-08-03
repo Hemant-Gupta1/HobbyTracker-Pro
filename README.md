@@ -12,7 +12,7 @@ HobbyTracker Pro is a Java-based application designed to manage and track variou
 3. Database Integration: Utilizes MySQL for data storage and management.
 
 ## Technologies Used
-Java, JDBC, MySQL
+Java, JDBC, SQL
 
 
 ## File Structure
