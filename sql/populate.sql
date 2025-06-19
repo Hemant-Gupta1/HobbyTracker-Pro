@@ -1,3 +1,16 @@
+-- Create Users table to store login credentials and roles
+CREATE TABLE Users (
+    UserID INT PRIMARY KEY AUTO_INCREMENT, -- Unique identifier for each user
+    Username VARCHAR(50) UNIQUE NOT NULL,  -- Username for login
+    PasswordHash VARCHAR(64) NOT NULL,     -- SHA-256 hash of the password
+    Role VARCHAR(10) NOT NULL              -- Role: 'admin' or 'user'
+);
+
+-- Insert sample users (passwords are SHA-256 hashes of 'adminpass' and 'userpass')
+INSERT INTO Users (Username, PasswordHash, Role) VALUES
+    ('admin', '8c6976e5b5410415bde908bd4dee15dfb16a7a60c6f6a7a5e0e3c6c8e6b6a6e6', 'admin'),
+    ('user',  '04f8996da763b7a969b1028ee3007569eaf3a635486ddab211d512c85b9df8fb', 'user');
+
 -- Create People table to store information about individuals
 CREATE TABLE People (
     PersonID INT PRIMARY KEY,   -- Unique identifier for each person
@@ -16,16 +29,17 @@ VALUES
 -- Create Hobbies table to store different hobbies
 CREATE TABLE Hobbies (
     HobbyID INT PRIMARY KEY,    -- Unique identifier for each hobby
-    HobbyName VARCHAR(50)       -- Name of the hobby
+    HobbyName VARCHAR(50),      -- Name of the hobby
+    Category VARCHAR(50)        -- Category of the hobby (e.g., Sports, Arts)
 );
 
 -- Insert sample data into the Hobbies table
-INSERT INTO Hobbies (HobbyID, HobbyName)
+INSERT INTO Hobbies (HobbyID, HobbyName, Category)
 VALUES
-    (1, 'Dancing'),
-    (2, 'Playing'),
-    (3, 'Sleeping'),
-    (4, 'Studying');
+    (1, 'Dancing', 'Arts'),
+    (2, 'Playing', 'Sports'),
+    (3, 'Sleeping', 'Leisure'),
+    (4, 'Studying', 'Education');
 
 -- Create PersonHobbies table to associate people with their hobbies
 CREATE TABLE PersonHobbies (
