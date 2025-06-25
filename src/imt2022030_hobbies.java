@@ -81,16 +81,21 @@ public class imt2022030_hobbies {
                     System.out.print("Enter password: ");
                     String password = sc.nextLine();
                     String hash = hashPassword(password);
-                    String sql = "SELECT Role FROM Users WHERE Username='" + username + "' AND PasswordHash='" + hash + "'";
-                    exec = stmt.executeQuery(sql);
+                    String sql = "SELECT Role FROM Users WHERE Username=? AND PasswordHash=?";
+                    PreparedStatement pstmt = conn.prepareStatement(sql);
+                    pstmt.setString(1, username);
+                    pstmt.setString(2, hash);
+                    exec = pstmt.executeQuery();
                     if (exec.next()) {
                         loggedInRole = exec.getString("Role");
                         loggedInUser = username;
                         System.out.println("Login successful as " + loggedInRole);
+                        pstmt.close();
                         break;
                     } else {
                         System.out.println("Invalid credentials. Try again.");
                     }
+                    pstmt.close();
                 } else if (authOpt == 2) {
                     System.out.print("Choose username: ");
                     String username = sc.nextLine();
@@ -102,10 +107,29 @@ public class imt2022030_hobbies {
                         System.out.println("Role must be 'admin' or 'user'.");
                         continue;
                     }
+                    // Check if this is the first user in the database
+                    boolean isFirstUser = false;
+                    String countSql = "SELECT COUNT(*) AS userCount FROM Users";
+                    PreparedStatement countStmt = conn.prepareStatement(countSql);
+                    ResultSet countRs = countStmt.executeQuery();
+                    if (countRs.next() && countRs.getInt("userCount") == 0) {
+                        isFirstUser = true;
+                    }
+                    countRs.close();
+                    countStmt.close();
+                    if (role.equals("admin") && !isFirstUser && (loggedInRole == null || !loggedInRole.equals("admin"))) {
+                        System.out.println("Only an admin can create another admin account. Please login as admin first.");
+                        continue;
+                    }
                     String hash = hashPassword(password);
-                    String sql = "INSERT INTO Users (Username, PasswordHash, Role) VALUES ('" + username + "', '" + hash + "', '" + role + "')";
+                    String sql = "INSERT INTO Users (Username, PasswordHash, Role) VALUES (?, ?, ?)";
                     try {
-                        stmt.executeUpdate(sql);
+                        PreparedStatement pstmt = conn.prepareStatement(sql);
+                        pstmt.setString(1, username);
+                        pstmt.setString(2, hash);
+                        pstmt.setString(3, role);
+                        pstmt.executeUpdate();
+                        pstmt.close();
                         conn.commit();
                         System.out.println("Signup successful. You can now login.");
                     } catch (SQLException e) {
@@ -118,9 +142,13 @@ public class imt2022030_hobbies {
                     System.out.print("Enter your new password: ");
                     String newPassword = sc.nextLine();
                     String hash = hashPassword(newPassword);
-                    String sql = "UPDATE Users SET PasswordHash='" + hash + "' WHERE Username='" + username + "'";
+                    String sql = "UPDATE Users SET PasswordHash=? WHERE Username=?";
                     try {
-                        int updated = stmt.executeUpdate(sql);
+                        PreparedStatement pstmt = conn.prepareStatement(sql);
+                        pstmt.setString(1, hash);
+                        pstmt.setString(2, username);
+                        int updated = pstmt.executeUpdate();
+                        pstmt.close();
                         if (updated > 0) {
                             conn.commit();
                             System.out.println("Password reset successful. You can now login with your new password.");
@@ -198,10 +226,12 @@ public class imt2022030_hobbies {
                     person_id = sc.nextInt();
                     System.out.println("Enter HobbyID:");
                     hoby_id = sc.nextInt();
-                    String sql_query = "INSERT INTO PersonHobbies (PersonID, HobbyID) VALUES (" + person_id + ","
-                            + hoby_id
-                            + ");";
-                    temp = stmt.executeUpdate(sql_query);
+                    String sql_query = "INSERT INTO PersonHobbies (PersonID, HobbyID) VALUES (?, ?)";
+                    PreparedStatement pstmt = conn.prepareStatement(sql_query);
+                    pstmt.setInt(1, person_id);
+                    pstmt.setInt(2, hoby_id);
+                    temp = pstmt.executeUpdate();
+                    pstmt.close();
                     if (temp == 1) {
                         System.out.println("Success");
                     } else {
@@ -228,10 +258,14 @@ public class imt2022030_hobbies {
                     name = sc.next();
                     System.out.println("Enter Gender:");
                     gender = sc.next();
-
-                    String sql_query = "UPDATE People SET Name = '" + name + "', Age = " + age + ", Gender = '"
-                            + gender + "' WHERE PersonID = '" + person_id + "';";
-                    temp = stmt.executeUpdate(sql_query);
+                    String sql_query = "UPDATE People SET Name = ?, Age = ?, Gender = ? WHERE PersonID = ?";
+                    PreparedStatement pstmt = conn.prepareStatement(sql_query);
+                    pstmt.setString(1, name);
+                    pstmt.setInt(2, age);
+                    pstmt.setString(3, gender);
+                    pstmt.setInt(4, person_id);
+                    temp = pstmt.executeUpdate();
+                    pstmt.close();
                     if (temp == 1) {
                         System.out.println("Success");
                     } else {
@@ -241,17 +275,17 @@ public class imt2022030_hobbies {
                     int temp;
                     String name;
                     int hoby_id;
-
                     System.out.println("Enter HobbyID:");
                     hoby_id = sc.nextInt();
-
                     System.out.println("Enter EquipmentName:");
                     sc.nextLine();
                     name = sc.nextLine();
-                    String sql_query = "DELETE FROM HobbyEquipment WHERE HobbyID = " + hoby_id
-                            + " AND EquipmentName = '"
-                            + name + "';";
-                    temp = stmt.executeUpdate(sql_query);
+                    String sql_query = "DELETE FROM HobbyEquipment WHERE HobbyID = ? AND EquipmentName = ?";
+                    PreparedStatement pstmt = conn.prepareStatement(sql_query);
+                    pstmt.setInt(1, hoby_id);
+                    pstmt.setString(2, name);
+                    temp = pstmt.executeUpdate();
+                    pstmt.close();
                     if (temp == 1) {
                         System.out.println("Success");
                     } else {
@@ -262,13 +296,15 @@ public class imt2022030_hobbies {
                 else if (option == 8) {
                     System.out.println("Enter Name");
                     String name = sc.next();
-                    String sql_query = "SELECT p.Name, h.HobbyName FROM People p INNER JOIN PersonHobbies ph ON p.PersonID = ph.PersonID INNER JOIN Hobbies h ON ph.HobbyID = h.HobbyID WHERE p.Name = '"
-                            + name + "';";
-                    exec = stmt.executeQuery(sql_query);
+                    String sql_query = "SELECT p.Name, h.HobbyName FROM People p INNER JOIN PersonHobbies ph ON p.PersonID = ph.PersonID INNER JOIN Hobbies h ON ph.HobbyID = h.HobbyID WHERE p.Name = ?";
+                    PreparedStatement pstmt = conn.prepareStatement(sql_query);
+                    pstmt.setString(1, name);
+                    exec = pstmt.executeQuery();
                     while (exec.next()) {
                         System.out.println("Name: " + exec.getString("Name"));
                         System.out.println("HobbyName: " + exec.getString("HobbyName"));
                     }
+                    pstmt.close();
                 }
 
                 else if (option == 9) {
@@ -300,23 +336,25 @@ public class imt2022030_hobbies {
                     int id = sc.nextInt();
                     System.out.println("Enter Equipment name:");
                     String equipment = sc.next();
-
-                    String sql_query = "INSERT INTO HobbyEquipment (HobbyID, EquipmentName) VALUES (" + id + ", '"
-                            + equipment + "');";
-                    temp = stmt.executeUpdate(sql_query);
+                    String sql_query = "INSERT INTO HobbyEquipment (HobbyID, EquipmentName) VALUES (?, ?)";
+                    PreparedStatement pstmt = conn.prepareStatement(sql_query);
+                    pstmt.setInt(1, id);
+                    pstmt.setString(2, equipment);
+                    temp = pstmt.executeUpdate();
+                    pstmt.close();
                     if (temp == 1) {
                         System.out.println("Success");
                     } else {
                         System.out.println("Failed");
                     }
-
                     System.out.println("Enter the new Hobby Id:");
                     id = sc.nextInt();
-
-                    sql_query = "UPDATE HobbyEquipment SET HobbyID = " + id + " WHERE EquipmentName = '" + equipment
-                            + "';";
-                    temp = stmt.executeUpdate(sql_query);
-
+                    sql_query = "UPDATE HobbyEquipment SET HobbyID = ? WHERE EquipmentName = ?";
+                    pstmt = conn.prepareStatement(sql_query);
+                    pstmt.setInt(1, id);
+                    pstmt.setString(2, equipment);
+                    temp = pstmt.executeUpdate();
+                    pstmt.close();
                     if (temp == 1) {
                         System.out.println("Success");
                     } else {
@@ -339,8 +377,10 @@ public class imt2022030_hobbies {
                     if (searchOpt == 1) {
                         System.out.print("Enter hobby name to search: ");
                         String hobbyName = sc.nextLine();
-                        String sql_query = "SELECT * FROM Hobbies WHERE HobbyName LIKE '%" + hobbyName + "%'";
-                        exec = stmt.executeQuery(sql_query);
+                        String sql_query = "SELECT * FROM Hobbies WHERE HobbyName LIKE ?";
+                        PreparedStatement pstmt = conn.prepareStatement(sql_query);
+                        pstmt.setString(1, "%" + hobbyName + "%");
+                        exec = pstmt.executeQuery();
                         boolean found = false;
                         while (exec.next()) {
                             found = true;
@@ -349,11 +389,14 @@ public class imt2022030_hobbies {
                             System.out.println("Category: " + exec.getString("Category"));
                         }
                         if (!found) System.out.println("No hobbies found with that name.");
+                        pstmt.close();
                     } else if (searchOpt == 2) {
                         System.out.print("Enter category to filter: ");
                         String category = sc.nextLine();
-                        String sql_query = "SELECT * FROM Hobbies WHERE Category LIKE '%" + category + "%'";
-                        exec = stmt.executeQuery(sql_query);
+                        String sql_query = "SELECT * FROM Hobbies WHERE Category LIKE ?";
+                        PreparedStatement pstmt = conn.prepareStatement(sql_query);
+                        pstmt.setString(1, "%" + category + "%");
+                        exec = pstmt.executeQuery();
                         boolean found = false;
                         while (exec.next()) {
                             found = true;
@@ -362,11 +405,14 @@ public class imt2022030_hobbies {
                             System.out.println("Category: " + exec.getString("Category"));
                         }
                         if (!found) System.out.println("No hobbies found in that category.");
+                        pstmt.close();
                     } else if (searchOpt == 3) {
                         System.out.print("Enter person name to search: ");
                         String personName = sc.nextLine();
-                        String sql_query = "SELECT * FROM People WHERE Name LIKE '%" + personName + "%'";
-                        exec = stmt.executeQuery(sql_query);
+                        String sql_query = "SELECT * FROM People WHERE Name LIKE ?";
+                        PreparedStatement pstmt = conn.prepareStatement(sql_query);
+                        pstmt.setString(1, "%" + personName + "%");
+                        exec = pstmt.executeQuery();
                         boolean found = false;
                         while (exec.next()) {
                             found = true;
@@ -376,11 +422,14 @@ public class imt2022030_hobbies {
                             System.out.println("Gender: " + exec.getString("Gender"));
                         }
                         if (!found) System.out.println("No people found with that name.");
+                        pstmt.close();
                     } else if (searchOpt == 4) {
                         System.out.print("Enter age to filter: ");
                         int age = sc.nextInt();
-                        String sql_query = "SELECT * FROM People WHERE Age = " + age;
-                        exec = stmt.executeQuery(sql_query);
+                        String sql_query = "SELECT * FROM People WHERE Age = ?";
+                        PreparedStatement pstmt = conn.prepareStatement(sql_query);
+                        pstmt.setInt(1, age);
+                        exec = pstmt.executeQuery();
                         boolean found = false;
                         while (exec.next()) {
                             found = true;
@@ -390,13 +439,17 @@ public class imt2022030_hobbies {
                             System.out.println("Gender: " + exec.getString("Gender"));
                         }
                         if (!found) System.out.println("No people found with that age.");
+                        pstmt.close();
                     } else if (searchOpt == 5) {
                         System.out.print("Enter minimum age: ");
                         int minAge = sc.nextInt();
                         System.out.print("Enter maximum age: ");
                         int maxAge = sc.nextInt();
-                        String sql_query = "SELECT * FROM People WHERE Age BETWEEN " + minAge + " AND " + maxAge;
-                        exec = stmt.executeQuery(sql_query);
+                        String sql_query = "SELECT * FROM People WHERE Age BETWEEN ? AND ?";
+                        PreparedStatement pstmt = conn.prepareStatement(sql_query);
+                        pstmt.setInt(1, minAge);
+                        pstmt.setInt(2, maxAge);
+                        exec = pstmt.executeQuery();
                         boolean found = false;
                         while (exec.next()) {
                             found = true;
@@ -406,6 +459,7 @@ public class imt2022030_hobbies {
                             System.out.println("Gender: " + exec.getString("Gender"));
                         }
                         if (!found) System.out.println("No people found in that age range.");
+                        pstmt.close();
                     } else if (searchOpt == 6) {
                         System.out.print("Enter categories (comma-separated): ");
                         String categoriesInput = sc.nextLine();
@@ -415,13 +469,17 @@ public class imt2022030_hobbies {
                             String cat = categories[i].trim();
                             if (cat.isEmpty()) continue;
                             if (sb.length() > 0) sb.append(" OR ");
-                            sb.append("Category LIKE '%" + cat + "%'");
+                            sb.append("Category LIKE ?");
                         }
                         if (sb.length() == 0) {
                             System.out.println("No valid categories entered.");
                         } else {
                             String sql_query = "SELECT * FROM Hobbies WHERE " + sb.toString();
-                            exec = stmt.executeQuery(sql_query);
+                            PreparedStatement pstmt = conn.prepareStatement(sql_query);
+                            for (int i = 1; i <= categories.length; i++) {
+                                pstmt.setString(i, "%" + categories[i - 1].trim() + "%");
+                            }
+                            exec = pstmt.executeQuery();
                             boolean found = false;
                             while (exec.next()) {
                                 found = true;
@@ -430,6 +488,7 @@ public class imt2022030_hobbies {
                                 System.out.println("Category: " + exec.getString("Category"));
                             }
                             if (!found) System.out.println("No hobbies found in those categories.");
+                            pstmt.close();
                         }
                     } else if (searchOpt == 7) {
                         System.out.println("Combined Advanced Search:");
@@ -454,14 +513,14 @@ public class imt2022030_hobbies {
                             sc.nextLine();
                             StringBuilder where = new StringBuilder();
                             if (!hobbyName.isEmpty()) {
-                                where.append("HobbyName LIKE '%" + hobbyName + "%'");
+                                where.append("HobbyName LIKE ?");
                             }
                             StringBuilder catWhere = new StringBuilder();
                             for (String cat : categories) {
                                 cat = cat.trim();
                                 if (!cat.isEmpty()) {
                                     if (catWhere.length() > 0) catWhere.append(" OR ");
-                                    catWhere.append("Category LIKE '%" + cat + "%'");
+                                    catWhere.append("Category LIKE ?");
                                 }
                             }
                             if (catWhere.length() > 0) {
@@ -477,7 +536,14 @@ public class imt2022030_hobbies {
                                 if (orderOpt == 2) sql_query += " DESC";
                                 else sql_query += " ASC";
                             }
-                            exec = stmt.executeQuery(sql_query);
+                            PreparedStatement pstmt = conn.prepareStatement(sql_query);
+                            if (!hobbyName.isEmpty()) {
+                                pstmt.setString(1, "%" + hobbyName + "%");
+                            }
+                            for (int i = 2; i <= categories.length; i++) {
+                                pstmt.setString(i, "%" + categories[i - 2].trim() + "%");
+                            }
+                            exec = pstmt.executeQuery();
                             boolean found = false;
                             while (exec.next()) {
                                 found = true;
@@ -486,6 +552,7 @@ public class imt2022030_hobbies {
                                 System.out.println("Category: " + exec.getString("Category"));
                             }
                             if (!found) System.out.println("No hobbies found with those filters.");
+                            pstmt.close();
                         } else if (advType == 2) {
                             // People advanced search
                             System.out.print("Enter person name (leave blank for any): ");
@@ -502,17 +569,17 @@ public class imt2022030_hobbies {
                             sc.nextLine();
                             StringBuilder where = new StringBuilder();
                             if (!personName.isEmpty()) {
-                                where.append("Name LIKE '%" + personName + "%'");
+                                where.append("Name LIKE ?");
                             }
                             if (!minAgeStr.isEmpty() && !maxAgeStr.isEmpty()) {
                                 if (where.length() > 0) where.append(" AND ");
-                                where.append("Age BETWEEN " + minAgeStr + " AND " + maxAgeStr);
+                                where.append("Age BETWEEN ? AND ?");
                             } else if (!minAgeStr.isEmpty()) {
                                 if (where.length() > 0) where.append(" AND ");
-                                where.append("Age >= " + minAgeStr);
+                                where.append("Age >= ?");
                             } else if (!maxAgeStr.isEmpty()) {
                                 if (where.length() > 0) where.append(" AND ");
-                                where.append("Age <= " + maxAgeStr);
+                                where.append("Age <= ?");
                             }
                             String sql_query = "SELECT * FROM People";
                             if (where.length() > 0) sql_query += " WHERE " + where.toString();
@@ -522,7 +589,19 @@ public class imt2022030_hobbies {
                                 if (orderOpt == 2) sql_query += " DESC";
                                 else sql_query += " ASC";
                             }
-                            exec = stmt.executeQuery(sql_query);
+                            PreparedStatement pstmt = conn.prepareStatement(sql_query);
+                            if (!personName.isEmpty()) {
+                                pstmt.setString(1, "%" + personName + "%");
+                            }
+                            if (!minAgeStr.isEmpty() && !maxAgeStr.isEmpty()) {
+                                pstmt.setString(2, minAgeStr);
+                                pstmt.setString(3, maxAgeStr);
+                            } else if (!minAgeStr.isEmpty()) {
+                                pstmt.setString(2, minAgeStr);
+                            } else if (!maxAgeStr.isEmpty()) {
+                                pstmt.setString(2, maxAgeStr);
+                            }
+                            exec = pstmt.executeQuery();
                             boolean found = false;
                             while (exec.next()) {
                                 found = true;
@@ -532,6 +611,7 @@ public class imt2022030_hobbies {
                                 System.out.println("Gender: " + exec.getString("Gender"));
                             }
                             if (!found) System.out.println("No people found with those filters.");
+                            pstmt.close();
                         } else if (advType == 3) {
                             // Combined hobbies and people search
                             System.out.print("Enter hobby name (leave blank for any): ");
@@ -553,14 +633,14 @@ public class imt2022030_hobbies {
                             sc.nextLine();
                             StringBuilder where = new StringBuilder();
                             if (!hobbyName.isEmpty()) {
-                                where.append("h.HobbyName LIKE '%" + hobbyName + "%'");
+                                where.append("h.HobbyName LIKE ?");
                             }
                             StringBuilder catWhere = new StringBuilder();
                             for (String cat : categories) {
                                 cat = cat.trim();
                                 if (!cat.isEmpty()) {
                                     if (catWhere.length() > 0) catWhere.append(" OR ");
-                                    catWhere.append("h.Category LIKE '%" + cat + "%'");
+                                    catWhere.append("h.Category LIKE ?");
                                 }
                             }
                             if (catWhere.length() > 0) {
@@ -570,17 +650,17 @@ public class imt2022030_hobbies {
                             }
                             if (!personName.isEmpty()) {
                                 if (where.length() > 0) where.append(" AND ");
-                                where.append("p.Name LIKE '%" + personName + "%'");
+                                where.append("p.Name LIKE ?");
                             }
                             if (!minAgeStr.isEmpty() && !maxAgeStr.isEmpty()) {
                                 if (where.length() > 0) where.append(" AND ");
-                                where.append("p.Age BETWEEN " + minAgeStr + " AND " + maxAgeStr);
+                                where.append("p.Age BETWEEN ? AND ?");
                             } else if (!minAgeStr.isEmpty()) {
                                 if (where.length() > 0) where.append(" AND ");
-                                where.append("p.Age >= " + minAgeStr);
+                                where.append("p.Age >= ?");
                             } else if (!maxAgeStr.isEmpty()) {
                                 if (where.length() > 0) where.append(" AND ");
-                                where.append("p.Age <= " + maxAgeStr);
+                                where.append("p.Age <= ?");
                             }
                             String sql_query = "SELECT p.PersonID, p.Name, p.Age, p.Gender, h.HobbyID, h.HobbyName, h.Category " +
                                     "FROM People p " +
@@ -594,7 +674,25 @@ public class imt2022030_hobbies {
                                 if (orderOpt == 2) sql_query += " DESC";
                                 else sql_query += " ASC";
                             }
-                            exec = stmt.executeQuery(sql_query);
+                            PreparedStatement pstmt = conn.prepareStatement(sql_query);
+                            if (!hobbyName.isEmpty()) {
+                                pstmt.setString(1, "%" + hobbyName + "%");
+                            }
+                            for (int i = 2; i <= categories.length; i++) {
+                                pstmt.setString(i, "%" + categories[i - 2].trim() + "%");
+                            }
+                            if (!personName.isEmpty()) {
+                                pstmt.setString(categories.length + 2, "%" + personName + "%");
+                            }
+                            if (!minAgeStr.isEmpty() && !maxAgeStr.isEmpty()) {
+                                pstmt.setString(categories.length + 3, minAgeStr);
+                                pstmt.setString(categories.length + 4, maxAgeStr);
+                            } else if (!minAgeStr.isEmpty()) {
+                                pstmt.setString(categories.length + 3, minAgeStr);
+                            } else if (!maxAgeStr.isEmpty()) {
+                                pstmt.setString(categories.length + 3, maxAgeStr);
+                            }
+                            exec = pstmt.executeQuery();
                             boolean found = false;
                             while (exec.next()) {
                                 found = true;
@@ -608,6 +706,7 @@ public class imt2022030_hobbies {
                                 System.out.println("------------------------");
                             }
                             if (!found) System.out.println("No results found with those filters.");
+                            pstmt.close();
                         } else {
                             System.out.println("Invalid option.");
                         }
