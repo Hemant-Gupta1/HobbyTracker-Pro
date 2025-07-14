@@ -97,17 +97,7 @@ public class imt2022030_hobbies {
                     }
                     pstmt.close();
                 } else if (authOpt == 2) {
-                    System.out.print("Choose username: ");
-                    String username = sc.nextLine();
-                    System.out.print("Choose password: ");
-                    String password = sc.nextLine();
-                    System.out.print("Role (admin/user): ");
-                    String role = sc.nextLine();
-                    if (!role.equals("admin") && !role.equals("user")) {
-                        System.out.println("Role must be 'admin' or 'user'.");
-                        continue;
-                    }
-                    // Check if this is the first user in the database
+                    // Only allow admin signup if Users table is empty
                     boolean isFirstUser = false;
                     String countSql = "SELECT COUNT(*) AS userCount FROM Users";
                     PreparedStatement countStmt = conn.prepareStatement(countSql);
@@ -117,25 +107,12 @@ public class imt2022030_hobbies {
                     }
                     countRs.close();
                     countStmt.close();
-                    if (role.equals("admin") && !isFirstUser && (loggedInRole == null || !loggedInRole.equals("admin"))) {
-                        System.out.println("Only an admin can create another admin account. Please login as admin first.");
+                    if (!isFirstUser) {
+                        System.out.println("Signup is only available for the first user. Please ask an admin to create your account.");
                         continue;
                     }
-                    String hash = hashPassword(password);
-                    String sql = "INSERT INTO Users (Username, PasswordHash, Role) VALUES (?, ?, ?)";
-                    try {
-                        PreparedStatement pstmt = conn.prepareStatement(sql);
-                        pstmt.setString(1, username);
-                        pstmt.setString(2, hash);
-                        pstmt.setString(3, role);
-                        pstmt.executeUpdate();
-                        pstmt.close();
-                        conn.commit();
-                        System.out.println("Signup successful. You can now login.");
-                    } catch (SQLException e) {
-                        System.out.println("Signup failed. Username may already exist.");
-                        conn.rollback();
-                    }
+                    // First user can choose role
+                    createUser(sc, conn, true);
                 } else if (authOpt == 3) {
                     System.out.print("Enter your username: ");
                     String username = sc.nextLine();
@@ -166,6 +143,7 @@ public class imt2022030_hobbies {
                 }
             }
 
+            // Main menu after login
             while (true) {
                 System.out.println("""
                         1. List Hobbies
@@ -182,10 +160,16 @@ public class imt2022030_hobbies {
                         12. Insert into HobbyEquipment and update hobby id
                         13. Exit
                         14. Search/Filter
-                        """);
+"""
+                + ("admin".equals(loggedInRole) ? "15. Create User\n" : ""));
                 System.out.print("Enter option: ");
                 int option = sc.nextInt();
-                
+                sc.nextLine();
+                if (option == 15 && "admin".equals(loggedInRole)) {
+                    createUser(sc, conn, true);
+                    continue;
+                }
+
                 if (option == 7) {
                     if (!"admin".equals(loggedInRole)) {
                         System.out.println("Only admin users can delete equipment.");
@@ -751,4 +735,39 @@ public class imt2022030_hobbies {
         System.out.println("End of Code");
     }
 
+    // Helper method to create a user (admin or user)
+    public static void createUser(Scanner sc, Connection conn, boolean allowAdmin) {
+        try {
+            System.out.print("Choose username: ");
+            String username = sc.nextLine();
+            System.out.print("Choose password: ");
+            String password = sc.nextLine();
+            String role = "user";
+            if (allowAdmin) {
+                System.out.print("Role (admin/user): ");
+                role = sc.nextLine();
+                if (!role.equals("admin") && !role.equals("user")) {
+                    System.out.println("Role must be 'admin' or 'user'.");
+                    return;
+                }
+            }
+            String hash = hashPassword(password);
+            String sql = "INSERT INTO Users (Username, PasswordHash, Role) VALUES (?, ?, ?)";
+            try {
+                PreparedStatement pstmt = conn.prepareStatement(sql);
+                pstmt.setString(1, username);
+                pstmt.setString(2, hash);
+                pstmt.setString(3, role);
+                pstmt.executeUpdate();
+                pstmt.close();
+                conn.commit();
+                System.out.println("User creation successful. You can now login.");
+            } catch (SQLException e) {
+                System.out.println("User creation failed. Username may already exist.");
+                conn.rollback();
+            }
+        } catch (Exception e) {
+            System.out.println("Error during user creation.");
+        }
+    }
 }
